@@ -4,8 +4,18 @@ https://lt.wikipedia.org/wiki/Glaudinimas
 ### Usage:
 ```
 go build ./src/lzw
-./lzw
+go build ./src/unlzw
 ./lzw -help
-./lzw -out out.txt
-(lzw.exe on windows)
+./lzw -in in.txt -out out.txt
+./unlzw -in out.txt -out de.txt
+
+(lzw.exe or unlzw.exe on windows)
 ```
+
+### TODO
+#### LZW
+ - [ ] make reset work
+ - [ ] use dynamic record sizing
+ - [ ] add tests
+ - [ ] document code
+ - [ ] analyze the compress ratio
