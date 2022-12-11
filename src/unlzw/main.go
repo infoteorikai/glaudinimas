@@ -13,6 +13,16 @@ import (
 var in = flag.String("in", "/path/to/input", "input file")
 var out = flag.String("out", "/path/to/output", "output file")
 
+func main() {
+	flag.Parse()
+
+	err := run()
+	if err != nil {
+		fmt.Println("Error: ", err)
+		os.Exit(1)
+	}
+}
+
 func run() error {
 	fi, err := os.Open(*in)
 	if err != nil {
