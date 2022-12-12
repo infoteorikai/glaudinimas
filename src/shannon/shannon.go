@@ -43,13 +43,6 @@ func compress(r io.Reader, w io.Writer, l int) {
 	defer bw.Close()
 	br := bitio.NewReader(r)
 
-	var dict dictionary
-	for i := range dict.sub {
-		dict.sub[i] = &dictionary{num: i}
-	}
-	cur := &dict
-	dsize := len(dict.sub)
-
 	bw.WriteBool(reset)
 	bw.WriteBits(uint64(k-1), 5)
 
