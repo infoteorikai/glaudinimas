@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"sort"
 
 	"github.com/icza/bitio"
 )
@@ -12,6 +13,7 @@ import (
 var in = flag.String("in", "/path/to/input", "input file")
 var out = flag.String("out", "/path/to/output", "output file")
 var l = flag.Int("l", 8, "word length is l")
+
 
 func main() {
 	flag.Parse()
@@ -37,39 +39,59 @@ func main() {
 	compress(fi, fo, *l)
 }
 
-// i not finish yet
+type pair struct {
+	word uint64
+	freq float64
+}
+
+type byFreq []pair
+
 func compress(r io.Reader, w io.Writer, l int) {
 	bw := bitio.NewWriter(w)
 	defer bw.Close()
 	br := bitio.NewReader(r)
+	wordCount := 0
+	var frequencies map[uint64]float64 = make(map[uint64]float64)
 
-	bw.WriteBool(reset)
-	bw.WriteBits(uint64(k-1), 5)
 
+	// reading and storing all words
 	for {
-		b, err := br.ReadByte()
+		b, err := br.ReadBits(uint8(l))
 		if err != nil {
 			break
 		}
 
-		// Longest match ends here
-		if cur.sub[b] == nil {
-			bw.WriteBits(uint64(cur.num), uint8(k))
-			if dsize < 1<<k {
-				cur.sub[b] = &dictionary{num: dsize}
-				dsize++
-			} else if reset {
-				panic("not implemented")
-			}
-			// Start from empty
-			cur = dict.sub[b]
+		wordCount ++
+		_, ok := frequencies[b]
+		
+		if ok {
+			frequencies[b] ++
 		} else {
-			cur = cur.sub[b]
+			frequencies[b] = 1
 		}
+		
+		b = 0
 	}
 
-	// Write out any remaining data if not empty
-	if cur != &dict {
-		bw.WriteBits(uint64(cur.num), uint8(k))
+
+	var freqSorted []pair
+
+	// saving and sorting frequencies
+	for w, f := range frequencies {
+		frequencies[w] = f/float64(wordCount)
+		freqSorted = append(freqSorted, pair{word: w, freq: frequencies[w]})
 	}
+	sort.Sort(byFreq(freqSorted))
+}
+
+
+
+func (f byFreq) Len() int {
+    return len(f)
+}
+func (f byFreq) Swap(i, j int) {
+    f[i], f[j] = f[j], f[i]
+}
+func (f byFreq) Less(i, j int) bool {
+    return f[i].freq < f[j].freq
 }
