@@ -157,56 +157,38 @@ func compress(rf *os.File, r io.Reader, w io.Writer, l int, fileSize uint64) {
 	// i could make these call a function but i dont wanna
 
 	// word length-1 		5
-	wordLenBitlen := uint8(math.Ceil(math.Log2(float64(l))))
-	bw.WriteBits(0, uint8(5-wordLenBitlen))
-	bw.WriteBits(uint64(l-1), wordLenBitlen)
+	bw.WriteBits(uint64(l-1), 5)
 	//fmt.Printf("wordLen-1: %v, wordLenBitlen: %v", l-1, wordLenBitlen)
 
 	// dictionary len-1 	6
-	dictLen := len(dictionary)
-	wordCountBitlen := uint8(math.Ceil(math.Log2(float64(dictLen))))
-	bw.WriteBits(0, uint8(6-wordCountBitlen))
-	bw.WriteBits(uint64(dictLen-1), wordCountBitlen)
+	bw.WriteBits(uint64(len(dictionary)-1), 6)
 	//fmt.Printf("dictLen-1: %v, wordCountBitlen: %v", dictLen-1, wordCountBitlen)
 
 	// leftover length	 	5
-	leftoverBitlen := uint8(math.Ceil(math.Log2(float64(leftover+1))))
-	bw.WriteBits(0, uint8(5-leftoverBitlen))
-	bw.WriteBits(leftover, leftoverBitlen)
+	bw.WriteBits(leftover, 5)
 	//fmt.Printf("leftover: %v, leftoverBitlen: %v", leftover, leftoverBitlen)
 	//fmt.Println(l, dictLen, leftover)
 
 	for w, c := range dictionary {
 
 		// word			wordlen
-		wordBitlen := int(math.Ceil(math.Log2(float64(w+1))))
-		bw.WriteBits(0, uint8(l-wordBitlen))
-		bw.WriteBits(w, uint8(wordBitlen))
+		bw.WriteBits(w, uint8(l))
 		//println(w, wordBitlen)
 
 		// codelen-1	5
-		codeLen := uint8(len(c))
-		codeLenBitlen := uint8(math.Ceil(math.Log2(float64(codeLen))))
-		bw.WriteBits(0, uint8(5-codeLenBitlen))
-		bw.WriteBits(uint64(codeLen-1), codeLenBitlen)
+		bw.WriteBits(uint64(len(c)-1), 5)
 		//println(c, codeLen-1, codeLenBitlen)
 
 		// code			codelen
 		for _, rune := range c {
-			if rune == '1' {
-				bw.WriteBool(true)
-			} else {
-				bw.WriteBool(false)
-			}
+			bw.WriteBool(rune == '1')
 		}
 		//println(w, codeLen, c)
 	}
 	//fmt.Print(dictionary)
 	
 	// leftover 
-	leftoverWordBitlen := uint64(math.Ceil(math.Log2(float64(leftoverWord+1))))
-	bw.WriteBits(0, uint8(leftover-leftoverWordBitlen))
-	bw.WriteBits(leftoverWord, uint8(leftoverWordBitlen))
+	bw.WriteBits(leftoverWord, uint8(leftover))
 
 	// encoded bits
 	rf.Seek(0,0)
@@ -217,11 +199,7 @@ func compress(rf *os.File, r io.Reader, w io.Writer, l int, fileSize uint64) {
 		}
 
 		for _, rune := range dictionary[b] {
-			if rune == '1' {
-				bw.WriteBool(true)
-			} else {
-				bw.WriteBool(false)
-			}
+			bw.WriteBool(rune == '1')
 		}
 		
 		b = 0

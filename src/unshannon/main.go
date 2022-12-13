@@ -140,11 +140,7 @@ func uncompress(r io.Reader, w io.Writer) {
 
 		if word, ok := dictionary[c]; ok {
 			for _, rune := range word {
-				if rune == '1' {
-					bw.WriteBool(true)
-				} else {
-					bw.WriteBool(false)
-				}
+				bw.WriteBool(rune == '1')
 			}
 			c = ""
 		} 
@@ -152,11 +148,7 @@ func uncompress(r io.Reader, w io.Writer) {
 
 	if leftover > 0 {
 		for _, rune := range leftoverWord {
-			if rune == '1' {
-				bw.WriteBool(true)
-			} else {
-				bw.WriteBool(false)
-			}
+			bw.WriteBool(rune == '1')
 		}
 	}
 }
