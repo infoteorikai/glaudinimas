@@ -47,29 +47,20 @@ func main() {
 const N = 256
 
 type dictionary struct {
-	num int
-	sub [N]*dictionary
+	sub [N]int
 }
 
-func (d *dictionary) reset() {
-	for i := range d.sub {
-		for j := range d.sub[i].sub {
-			d.sub[i].sub[j] = nil
-		}
-	}
-}
+var dicts = make([]dictionary, N+1)
 
 func compress(r io.Reader, w io.Writer, k int, reset bool) {
 	bw := bitio.NewWriter(w)
 	defer bw.Close()
 	br := bufio.NewReader(r)
 
-	var dict dictionary
-	for i := range dict.sub {
-		dict.sub[i] = &dictionary{num: i}
+	cur := 0
+	for i := range dicts[0].sub {
+		dicts[0].sub[i] = i + 1
 	}
-	cur := &dict
-	dsize := N
 
 	// Write out the parameters
 	bw.WriteBool(reset)
@@ -82,33 +73,35 @@ func compress(r io.Reader, w io.Writer, k int, reset bool) {
 		}
 
 		// Longest match ends here
-		if cur.sub[b] == nil {
-			bw.WriteBits(uint64(cur.num), uint8(k))
+		if dicts[cur].sub[b] == 0 {
+			bw.WriteBits(uint64(cur-1), uint8(k))
 
 			// Add to dictionary if not full
-			if dsize < 1<<k {
-				cur.sub[b] = &dictionary{num: dsize}
-				dsize++
+			if len(dicts)-1 < 1<<k {
+				dicts[cur].sub[b] = len(dicts)
+				dicts = append(dicts, dictionary{})
 			}
 
 			// Start from the root of tree
-			cur = &dict
+			cur = 0
 		}
 		// Advance position in the tree
-		cur = cur.sub[b]
+		cur = dicts[cur].sub[b]
 
 		// If we are reseting, do it now
-		if dsize == 1<<k && reset {
-			dict.reset()
-			dsize = N
-			cur = &dict
+		if len(dicts)-1 == 1<<k && reset {
+			dicts = dicts[:N+1]
+			for i := 1; i <= N; i++ {
+				dicts[i] = dictionary{}
+			}
+			cur = 0
 			// We need to read current byte again as we're starting from scratch
 			br.UnreadByte()
 		}
 	}
 
 	// Write out any remaining data if not empty
-	if cur != &dict {
-		bw.WriteBits(uint64(cur.num), uint8(k))
+	if cur != 0 {
+		bw.WriteBits(uint64(cur-1), uint8(k))
 	}
 }
