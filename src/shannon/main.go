@@ -135,7 +135,7 @@ func compress(rf *os.File, r io.Reader, w io.Writer, l int, fileSize uint64) {
 
 		dictionary[t.word] = code
 	} 
-
+	println(len(dictionary))
 
 
 	// writing to file
@@ -146,8 +146,8 @@ func compress(rf *os.File, r io.Reader, w io.Writer, l int, fileSize uint64) {
 	// word length-1 		5
 	bw.WriteBits(uint64(l-1), 5)
 
-	// dictionary len-1 	16
-	bw.WriteBits(uint64(len(dictionary)-1), 16)
+	// dictionary len-1 	32
+	bw.WriteBits(uint64(len(dictionary)-1), 32)
 	
 	// leftover length	 	5
 	bw.WriteBits(leftover, 5)

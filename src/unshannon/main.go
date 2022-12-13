@@ -57,7 +57,7 @@ func uncompress(r io.Reader, w io.Writer) {
 		}
 	wordLen := b + 1
 
-	b, err = br.ReadBits(16)
+	b, err = br.ReadBits(32)
 		if err != nil {
 			fmt.Println("Error: ", err)
 			return
@@ -110,6 +110,8 @@ func uncompress(r io.Reader, w io.Writer) {
 
 		dictionary[code] = word
 	}
+	println(len(dictionary))
+
 	
 	leftoverWord := make([]bool, leftover)
 	for i := range leftoverWord {
