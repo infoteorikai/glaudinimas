@@ -64,8 +64,14 @@ func uncompress(br *bitio.Reader, w io.Writer, k int, reset bool) {
 	for i := range dict {
 		dict[i] = row{parent: -1, suffix: byte(i)}
 	}
+
+	// Buffer for reverse-writing data
 	buf := make([]byte, 1)
+
+	// Previously read record and last position of write in buffer
 	prev, pos := -1, 0
+
+	// First byte of previously added record
 	var pfirst byte
 
 	for {
@@ -76,12 +82,15 @@ func uncompress(br *bitio.Reader, w io.Writer, k int, reset bool) {
 		b := int(ub)
 
 		if b > len(dict) {
+			fmt.Println(b, len(dict))
 			panic("invalid data")
 		}
 		if b == len(dict) {
+			// Special case: this record is (b) (b)_1 which last+prev first byte
 			buf[len(buf)-1] = pfirst
 		} else {
 			pos = len(buf)
+			// Traverse down the parent chain, filling buffer from end
 			for b >= 0 {
 				pos--
 				buf[pos] = dict[b].suffix
@@ -90,16 +99,30 @@ func uncompress(br *bitio.Reader, w io.Writer, k int, reset bool) {
 
 			pfirst = buf[pos]
 		}
+		debuf := false
+		// Only save dictionary records if we have the previous record
 		if prev >= 0 {
+			//fmt.Println("prev ok")
 			if len(dict) < 1<<k {
 				dict = append(dict, row{parent: prev, suffix: buf[pos]})
-			} else if reset {
-				panic("not implemented")
+			}
+			//fmt.Println(len(dict), " < ", 1<<k)
+			if len(dict)+1 == 1<<k && reset {
+				//fmt.Println("reseting")
+				dict = dict[:256]
+				debuf = true
 			}
 		}
 		//fmt.Fprint(w, "|")
 		w.Write(buf[pos:])
-		buf = append(buf, 0)
 		prev = int(ub)
+		//fmt.Println("record", ub, "len:", len(buf)-pos, "dict:", len(dict), "prev:", prev)
+		//fmt.Println("record", ub, "len:", len(buf)-pos)
+		buf = append(buf, 0)
+		if debuf {
+			pos = 0
+			buf = buf[:1]
+			prev = -1
+		}
 	}
 }

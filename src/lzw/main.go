@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"flag"
 	"fmt"
 	"io"
@@ -38,25 +39,34 @@ func main() {
 	compress(fi, fo, *k, *reset)
 }
 
+const N = 256
+
 type dictionary struct {
 	num int
-	sub [256]*dictionary
+	sub [N]*dictionary
+}
+
+func (d *dictionary) reset() {
+	for i := range d.sub {
+		d.sub[i] = &dictionary{num: i}
+	}
 }
 
 func compress(r io.Reader, w io.Writer, k int, reset bool) {
 	bw := bitio.NewWriter(w)
 	defer bw.Close()
-	br := bitio.NewReader(r)
+	br := bufio.NewReader(r)
 
 	var dict dictionary
-	for i := range dict.sub {
-		dict.sub[i] = &dictionary{num: i}
-	}
+	dict.reset()
 	cur := &dict
-	dsize := len(dict.sub)
+	dsize := N
 
+	// Write out the parameters
 	bw.WriteBool(reset)
 	bw.WriteBits(uint64(k-1), 5)
+
+	ln := 0
 
 	for {
 		b, err := br.ReadByte()
@@ -67,17 +77,45 @@ func compress(r io.Reader, w io.Writer, k int, reset bool) {
 		// Longest match ends here
 		if cur.sub[b] == nil {
 			bw.WriteBits(uint64(cur.num), uint8(k))
+			//fmt.Println("record ", cur.num, " len: ", ln)
+			ln = 0
+
+			// Add to dictionary if not full
 			if dsize < 1<<k {
 				cur.sub[b] = &dictionary{num: dsize}
 				dsize++
-			} else if reset {
-				panic("not implemented")
 			}
-			// Start from empty
-			cur = dict.sub[b]
-		} else {
-			cur = cur.sub[b]
+
+			// If we are reseting, do it now
+			if dsize == 1<<k && reset {
+				dict.reset()
+				//fmt.Println("resetting")
+
+				dsize = N
+				ln = 0
+				br.UnreadByte()
+				cur = &dict
+				continue
+
+				// Save this new byte from the tree root
+				//dict.sub[b] = &dictionary{num: N}
+				//dsize = N + 1
+				//ln = 1
+			}
+
+			// } else if reset {
+			// 	dict.reset()
+			// 	dsize = len(dict.sub)
+			// 	dict.sub[b] = &dictionary{num: dsize}
+			// 	dsize++
+			// }
+
+			// Start from the root of tree
+			cur = &dict
 		}
+		ln++
+		// Advance position in the tree
+		cur = cur.sub[b]
 	}
 
 	// Write out any remaining data if not empty
