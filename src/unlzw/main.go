@@ -76,14 +76,17 @@ func uncompress(br *bitio.Reader, w io.Writer, k int, reset bool) {
 	var pfirst byte
 
 	for {
-		kmin := bits.Len(uint(len(dict)))
-		kmin = k
-
-		ub, err := br.ReadBits(uint8(kmin))
+		// The dictionary of compressor is ussualy larger by one, unless
+		// its fresh or fully filled
+		add := 1
+		if prev < 0 || len(dict) == 1<<k {
+			add = 0
+		}
+		bits := bits.Len(uint(len(dict) - 1 + add))
+		ub, err := br.ReadBits(uint8(bits))
 		if err != nil {
 			break
 		}
-		//fmt.Println("read of", kmin)
 		b := int(ub)
 
 		if b > len(dict) {
