@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"math/bits"
 	"os"
 
 	"github.com/icza/bitio"
@@ -75,7 +76,9 @@ func uncompress(br *bitio.Reader, w io.Writer, k int, reset bool) {
 	var pfirst byte
 
 	for {
-		ub, err := br.ReadBits(uint8(k))
+		kmin := bits.Len(uint(len(dict)))
+
+		ub, err := br.ReadBits(uint8(kmin))
 		if err != nil {
 			break
 		}

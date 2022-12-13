@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"math/bits"
 	"os"
 
 	"github.com/icza/bitio"
@@ -52,6 +53,11 @@ type dictionary [N]int
 // dict[0] is root, and any node pointing to it is considered as not having that child
 var dict = make([]dictionary, N+1)
 
+func writeBits(w *bitio.Writer, v int) {
+	k := bits.Len(uint(len(dict) - 1))
+	w.WriteBits(uint64(v-1), uint8(k))
+}
+
 func compress(r io.Reader, w io.Writer, k int, reset bool) {
 	bw := bitio.NewWriter(w)
 	defer bw.Close()
@@ -76,8 +82,7 @@ func compress(r io.Reader, w io.Writer, k int, reset bool) {
 
 		// Longest match ends here
 		if dict[cur][b] == 0 {
-			bw.WriteBits(uint64(cur-1), uint8(k))
-
+			writeBits(bw, cur-1)
 			// Add to dictionary if not full
 			if len(dict)-1 < 1<<k {
 				dict[cur][b] = len(dict)
@@ -104,6 +109,6 @@ func compress(r io.Reader, w io.Writer, k int, reset bool) {
 
 	// Write out any remaining data if not empty
 	if cur > 0 {
-		bw.WriteBits(uint64(cur-1), uint8(k))
+		writeBits(bw, cur-1)
 	}
 }
