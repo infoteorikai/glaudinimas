@@ -194,8 +194,16 @@ func compress(rf *os.File, r io.Reader, w io.Writer, l int, fileSize uint64) {
 
 	// encoded bits
 	rf.Seek(0,0)
+	for i := 0; i < int(wordCount); i++ {
+		b, err := br.ReadBits(uint8(l))
+		if err != nil {
+			break
+		}
 
-
+		bw.WriteBits(uint64(dictionary[b]), uint8(freqSummed[b].len))
+		
+		b = 0
+	}
 }
 
 
