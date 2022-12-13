@@ -77,11 +77,13 @@ func uncompress(br *bitio.Reader, w io.Writer, k int, reset bool) {
 
 	for {
 		kmin := bits.Len(uint(len(dict)))
+		kmin = k
 
 		ub, err := br.ReadBits(uint8(kmin))
 		if err != nil {
 			break
 		}
+		//fmt.Println("read of", kmin)
 		b := int(ub)
 
 		if b > len(dict) {

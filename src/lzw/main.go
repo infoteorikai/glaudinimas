@@ -5,7 +5,6 @@ import (
 	"flag"
 	"fmt"
 	"io"
-	"math/bits"
 	"os"
 
 	"github.com/icza/bitio"
@@ -54,7 +53,9 @@ type dictionary [N]int
 var dict = make([]dictionary, N+1)
 
 func writeBits(w *bitio.Writer, v int) {
-	k := bits.Len(uint(len(dict) - 1))
+	//k := bits.Len(uint(len(dict) - 1))
+	k := *k
+	//fmt.Println("write of", k)
 	w.WriteBits(uint64(v-1), uint8(k))
 }
 
