@@ -82,9 +82,9 @@ func uncompress(br *bitio.Reader, w io.Writer, k int, reset bool) {
 		b := int(ub)
 
 		if b > len(dict) {
-			fmt.Println(b, len(dict))
 			panic("invalid data")
 		}
+
 		if b == len(dict) {
 			// Special case: this record is (b) (b)_1 which last+prev first byte
 			buf[len(buf)-1] = pfirst
@@ -99,27 +99,18 @@ func uncompress(br *bitio.Reader, w io.Writer, k int, reset bool) {
 
 			pfirst = buf[pos]
 		}
-		debuf := false
-		// Only save dictionary records if we have the previous record
-		if prev >= 0 {
-			//fmt.Println("prev ok")
-			if len(dict) < 1<<k {
-				dict = append(dict, row{parent: prev, suffix: buf[pos]})
-			}
-			//fmt.Println(len(dict), " < ", 1<<k)
-			if len(dict)+1 == 1<<k && reset {
-				//fmt.Println("reseting")
-				dict = dict[:256]
-				debuf = true
-			}
+
+		// Only save dictionary records if we have the previous record and not foll
+		if prev >= 0 && len(dict) < 1<<k {
+			dict = append(dict, row{parent: prev, suffix: buf[pos]})
 		}
-		//fmt.Fprint(w, "|")
 		w.Write(buf[pos:])
 		prev = int(ub)
-		//fmt.Println("record", ub, "len:", len(buf)-pos, "dict:", len(dict), "prev:", prev)
-		//fmt.Println("record", ub, "len:", len(buf)-pos)
 		buf = append(buf, 0)
-		if debuf {
+
+		// If we are resetting, do it now
+		if reset && len(dict)+1 == 1<<k {
+			dict = dict[:256]
 			pos = 0
 			buf = buf[:1]
 			prev = -1
