@@ -123,6 +123,7 @@ func compress(rf *os.File, r io.Reader, w io.Writer, l int, fileSize uint64) {
 	freqSum := 0.0
 	for _, p := range freqSorted {
 		length := int(math.Ceil(-math.Log2(p.freq)))
+		//fmt.Printf("%f %v %v\n", p.freq, p.word, length)
 		freqSummed[p.word] = tuple{word: p.word, freq: freqSum, len: length}
 		freqSum += p.freq
 	}
@@ -138,7 +139,7 @@ func compress(rf *os.File, r io.Reader, w io.Writer, l int, fileSize uint64) {
 		// taking the first len bits of binary sumfrequency representation
 		for i := 0; i < t.len; i++ {
 			fraction *= 2
-			if fraction < 0 {
+			if fraction < 1 {
 				code += "0"
 			} else {
 				code += "1"
@@ -146,6 +147,7 @@ func compress(rf *os.File, r io.Reader, w io.Writer, l int, fileSize uint64) {
 			}
 		}
 
+		// fmt.Printf("%f %v\n", t.freq, code)
 		dictionary[t.word] = code
 	} 
 
@@ -158,17 +160,21 @@ func compress(rf *os.File, r io.Reader, w io.Writer, l int, fileSize uint64) {
 	wordLenBitlen := uint8(math.Ceil(math.Log2(float64(l))))
 	bw.WriteBits(0, uint8(5-wordLenBitlen))
 	bw.WriteBits(uint64(l-1), wordLenBitlen)
+	//fmt.Printf("wordLen-1: %v, wordLenBitlen: %v", l-1, wordLenBitlen)
 
 	// dictionary len-1 	6
 	dictLen := len(dictionary)
 	wordCountBitlen := uint8(math.Ceil(math.Log2(float64(dictLen))))
 	bw.WriteBits(0, uint8(6-wordCountBitlen))
 	bw.WriteBits(uint64(dictLen-1), wordCountBitlen)
+	//fmt.Printf("dictLen-1: %v, wordCountBitlen: %v", dictLen-1, wordCountBitlen)
 
 	// leftover length	 	5
 	leftoverBitlen := uint8(math.Ceil(math.Log2(float64(leftover+1))))
 	bw.WriteBits(0, uint8(5-leftoverBitlen))
 	bw.WriteBits(leftover, leftoverBitlen)
+	//fmt.Printf("leftover: %v, leftoverBitlen: %v", leftover, leftoverBitlen)
+	//fmt.Println(l, dictLen, leftover)
 
 	for w, c := range dictionary {
 
@@ -176,23 +182,26 @@ func compress(rf *os.File, r io.Reader, w io.Writer, l int, fileSize uint64) {
 		wordBitlen := int(math.Ceil(math.Log2(float64(w+1))))
 		bw.WriteBits(0, uint8(l-wordBitlen))
 		bw.WriteBits(w, uint8(wordBitlen))
+		//println(w, wordBitlen)
 
 		// codelen-1	5
-		fmt.Println(len(c), freqSummed[w].len)
-		codeLen := uint8(freqSummed[w].len)
+		codeLen := uint8(len(c))
 		codeLenBitlen := uint8(math.Ceil(math.Log2(float64(codeLen))))
 		bw.WriteBits(0, uint8(5-codeLenBitlen))
 		bw.WriteBits(uint64(codeLen-1), codeLenBitlen)
+		//println(c, codeLen-1, codeLenBitlen)
 
 		// code			codelen
 		for _, rune := range c {
-			if rune == 1 {
+			if rune == '1' {
 				bw.WriteBool(true)
 			} else {
 				bw.WriteBool(false)
 			}
 		}
+		//println(w, codeLen, c)
 	}
+	//fmt.Print(dictionary)
 	
 	// leftover 
 	leftoverWordBitlen := uint64(math.Ceil(math.Log2(float64(leftoverWord+1))))
@@ -208,7 +217,7 @@ func compress(rf *os.File, r io.Reader, w io.Writer, l int, fileSize uint64) {
 		}
 
 		for _, rune := range dictionary[b] {
-			if rune == 1 {
+			if rune == '1' {
 				bw.WriteBool(true)
 			} else {
 				bw.WriteBool(false)
@@ -227,5 +236,5 @@ func (f byFreq) Swap(i, j int) {
     f[i], f[j] = f[j], f[i]
 }
 func (f byFreq) Less(i, j int) bool {
-    return f[i].freq < f[j].freq
+    return f[i].freq > f[j].freq
 }

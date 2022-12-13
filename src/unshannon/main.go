@@ -36,19 +36,6 @@ func main() {
 
 
 
-type pair struct {
-	word uint64
-	freq float64
-}
-
-type tuple struct {
-	word uint64
-	freq float64
-	len int
-}
-
-
-
 func uncompress(r io.Reader, w io.Writer) {
 	br := bitio.NewReader(r)
 	bw := bitio.NewWriter(w)
@@ -77,7 +64,7 @@ func uncompress(r io.Reader, w io.Writer) {
 		}
 	leftover := b
 	b = 0
-
+	//fmt.Println(wordLen, dictLen, leftover)
 
 	var dictionary map[string]string = make(map[string]string)
 	
@@ -102,6 +89,8 @@ func uncompress(r io.Reader, w io.Writer) {
 			fmt.Println("Error: ", errcl)
 			return
 		}
+		codeLen++
+		//println(codeLen)
 
 		code := ""
 		for j := 0; j < int(codeLen); j++ {
@@ -118,7 +107,9 @@ func uncompress(r io.Reader, w io.Writer) {
 		}
 
 		dictionary[code] = word
+		//println(word, codeLen, code)
 	}
+ 	//fmt.Print(dictionary)
 	
 	leftoverWord := ""
 	for i := 0; i < int(leftover); i++ {
@@ -149,16 +140,23 @@ func uncompress(r io.Reader, w io.Writer) {
 
 		if word, ok := dictionary[c]; ok {
 			for _, rune := range word {
-				if rune == 1 {
+				if rune == '1' {
 					bw.WriteBool(true)
 				} else {
 					bw.WriteBool(false)
 				}
 			}
 			c = ""
-		} else if len(c) > int(wordLen) {
-			fmt.Println("Error: can't decode")
-			return
+		} 
+	}
+
+	if leftover > 0 {
+		for _, rune := range leftoverWord {
+			if rune == '1' {
+				bw.WriteBool(true)
+			} else {
+				bw.WriteBool(false)
+			}
 		}
 	}
 }
