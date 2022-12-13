@@ -57,7 +57,7 @@ func uncompress(r io.Reader, w io.Writer) {
 		}
 	wordLen := b + 1
 
-	b, err = br.ReadBits(6)
+	b, err = br.ReadBits(16)
 		if err != nil {
 			fmt.Println("Error: ", err)
 			return

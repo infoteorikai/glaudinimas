@@ -146,8 +146,8 @@ func compress(rf *os.File, r io.Reader, w io.Writer, l int, fileSize uint64) {
 	// word length-1 		5
 	bw.WriteBits(uint64(l-1), 5)
 
-	// dictionary len-1 	6
-	bw.WriteBits(uint64(len(dictionary)-1), 6)
+	// dictionary len-1 	16
+	bw.WriteBits(uint64(len(dictionary)-1), 16)
 	
 	// leftover length	 	5
 	bw.WriteBits(leftover, 5)
