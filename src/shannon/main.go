@@ -70,8 +70,8 @@ func compress(rf *os.File, r io.Reader, w io.Writer, l int, fileSize uint64) {
 	br := bitio.NewReader(r)
 	bw := bitio.NewWriter(w)
 	defer bw.Close()
-	wordCount := fileSize / uint64(l)
-	leftover := fileSize % uint64(l)
+	wordCount := fileSize*8 / uint64(l)
+	leftover := fileSize*8 % uint64(l)
 	var frequencies map[uint64]float64 = make(map[uint64]float64)
 
 
@@ -99,7 +99,7 @@ func compress(rf *os.File, r io.Reader, w io.Writer, l int, fileSize uint64) {
 	var leftoverWord uint64
 	var err1 error
 	if leftover > 0 {
-		leftoverWord, err1 = br.ReadBits(uint8(l))
+		leftoverWord, err1 = br.ReadBits(uint8(leftover))
 		if err1 != nil {
 			fmt.Println("Error:", err1)
 			return
