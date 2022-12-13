@@ -40,14 +40,22 @@ func uncompress(r io.Reader, w io.Writer) {
 	br := bitio.NewReader(r)
 	bw := bitio.NewWriter(w)
 	defer bw.Close()
+
+
+
+	b, err := br.ReadBits(32)
+		if err != nil {
+			fmt.Println("Error: ", err)
+			return
+		}
+	wordCount := b + 1
 	
-	b, err := br.ReadBits(5)
+	b, err = br.ReadBits(5)
 		if err != nil {
 			fmt.Println("Error: ", err)
 			return
 		}
 	wordLen := b + 1
-	b = 0
 
 	b, err = br.ReadBits(6)
 		if err != nil {
@@ -55,7 +63,6 @@ func uncompress(r io.Reader, w io.Writer) {
 			return
 		}
 	dictLen := b + 1
-	b = 0
 
 	b, err = br.ReadBits(5)
 		if err != nil {
@@ -63,34 +70,29 @@ func uncompress(r io.Reader, w io.Writer) {
 			return
 		}
 	leftover := b
-	b = 0
-	//fmt.Println(wordLen, dictLen, leftover)
 
-	var dictionary map[string]string = make(map[string]string)
+
+
+	var dictionary map[string][]bool = make(map[string][]bool)
 	
 	for i := 0; i < int(dictLen); i++ {
 
-		word := ""
-		for j := 0; j < int(wordLen); j++ {
+		word := make([]bool, wordLen)
+		for j := range word {
 			bit, err := br.ReadBool()
 			if err != nil {
 				break
 			}
 
-			if bit {
-				word += "1"
-			} else {
-				word += "0"
-			}
+			word[j] = bit
 		}
 		
-		codeLen, errcl := br.ReadBits(5)
-		if errcl != nil {
-			fmt.Println("Error: ", errcl)
+		b, err = br.ReadBits(5)
+		if err != nil {
+			fmt.Println("Error: ", err)
 			return
 		}
-		codeLen++
-		//println(codeLen)
+		codeLen := b + 1
 
 		code := ""
 		for j := 0; j < int(codeLen); j++ {
@@ -107,26 +109,20 @@ func uncompress(r io.Reader, w io.Writer) {
 		}
 
 		dictionary[code] = word
-		//println(word, codeLen, code)
 	}
- 	//fmt.Print(dictionary)
 	
-	leftoverWord := ""
-	for i := 0; i < int(leftover); i++ {
+	leftoverWord := make([]bool, leftover)
+	for i := range leftoverWord {
 		bit, err := br.ReadBool()
 		if err != nil {
 			break
 		}
 
-		if bit {
-			leftoverWord += "1"
-		} else {
-			leftoverWord += "0"
-		}
+		leftoverWord[i] = bit
 	}
 
 	c := ""
-	for {
+	for wordCount > 0 {
 		bit, err := br.ReadBool()
 		if err != nil {
 			break
@@ -139,16 +135,17 @@ func uncompress(r io.Reader, w io.Writer) {
 		}
 
 		if word, ok := dictionary[c]; ok {
-			for _, rune := range word {
-				bw.WriteBool(rune == '1')
+			wordCount --
+			for i := range word {
+				bw.WriteBool(word[i])
 			}
 			c = ""
 		} 
 	}
 
 	if leftover > 0 {
-		for _, rune := range leftoverWord {
-			bw.WriteBool(rune == '1')
+		for i := range leftoverWord {
+			bw.WriteBool(leftoverWord[i])
 		}
 	}
 }
