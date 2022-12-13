@@ -46,20 +46,22 @@ func main() {
 
 const N = 256
 
-type dictionary struct {
-	sub [N]int
-}
+// dictionary is a node of a tree structure pointing to its children depending on the byte.
+type dictionary [N]int
 
-var dicts = make([]dictionary, N+1)
+// dict[0] is root, and any node pointing to it is considered as not having that child
+var dict = make([]dictionary, N+1)
 
 func compress(r io.Reader, w io.Writer, k int, reset bool) {
 	bw := bitio.NewWriter(w)
 	defer bw.Close()
 	br := bufio.NewReader(r)
 
+	// fill in the initial 256 byte dictionary
+	// since root is zero, all other indeces are stored increased by one
 	cur := 0
-	for i := range dicts[0].sub {
-		dicts[0].sub[i] = i + 1
+	for i := range dict[0] {
+		dict[0][i] = i + 1
 	}
 
 	// Write out the parameters
@@ -73,26 +75,26 @@ func compress(r io.Reader, w io.Writer, k int, reset bool) {
 		}
 
 		// Longest match ends here
-		if dicts[cur].sub[b] == 0 {
+		if dict[cur][b] == 0 {
 			bw.WriteBits(uint64(cur-1), uint8(k))
 
 			// Add to dictionary if not full
-			if len(dicts)-1 < 1<<k {
-				dicts[cur].sub[b] = len(dicts)
-				dicts = append(dicts, dictionary{})
+			if len(dict)-1 < 1<<k {
+				dict[cur][b] = len(dict)
+				dict = append(dict, dictionary{})
 			}
 
 			// Start from the root of tree
 			cur = 0
 		}
 		// Advance position in the tree
-		cur = dicts[cur].sub[b]
+		cur = dict[cur][b]
 
 		// If we are reseting, do it now
-		if len(dicts)-1 == 1<<k && reset {
-			dicts = dicts[:N+1]
+		if reset && len(dict)-1 == 1<<k {
+			dict = dict[:N+1]
 			for i := 1; i <= N; i++ {
-				dicts[i] = dictionary{}
+				dict[i] = dictionary{}
 			}
 			cur = 0
 			// We need to read current byte again as we're starting from scratch
@@ -101,7 +103,7 @@ func compress(r io.Reader, w io.Writer, k int, reset bool) {
 	}
 
 	// Write out any remaining data if not empty
-	if cur != 0 {
+	if cur > 0 {
 		bw.WriteBits(uint64(cur-1), uint8(k))
 	}
 }
