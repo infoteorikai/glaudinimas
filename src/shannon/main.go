@@ -14,15 +14,15 @@ import (
 
 var in = flag.String("in", "/path/to/input", "input file")
 var out = flag.String("out", "/path/to/output", "output file")
-var l = flag.Int("l", 8, "word length is l")
+var l = flag.Int("l", 8, "word length")
 
 
 
 func main() {
 	flag.Parse()
 
-	if *l < 2 || *l > 16 {
-		fmt.Printf("Error: l must be in [2; 16]")
+	if *l < 1 || *l > 32 {
+		fmt.Printf("Error: l must be in [1; 32]")
 	}
 
 	fi, err := os.Open(*in)
@@ -46,7 +46,7 @@ func main() {
 	}
 	defer fo.Close()
 
-	compress(fi, fo, *l, fileSize)
+	compress(fi, fi, fo, *l, fileSize)
 }
 
 
@@ -66,10 +66,10 @@ type byFreq []pair
 
 
 
-func compress(r io.Reader, w io.Writer, l int, fileSize uint64) {
+func compress(rf *os.File, r io.Reader, w io.Writer, l int, fileSize uint64) {
+	br := bitio.NewReader(r)
 	bw := bitio.NewWriter(w)
 	defer bw.Close()
-	br := bitio.NewReader(r)
 	wordCount := fileSize / uint64(l)
 	leftover := fileSize % uint64(l)
 	var frequencies map[uint64]float64 = make(map[uint64]float64)
@@ -85,6 +85,7 @@ func compress(r io.Reader, w io.Writer, l int, fileSize uint64) {
 
 		_, ok := frequencies[b]
 		
+		// if word is in map - increment, if not - add it
 		if ok {
 			frequencies[b] ++
 		} else {
@@ -95,18 +96,22 @@ func compress(r io.Reader, w io.Writer, l int, fileSize uint64) {
 	}
 
 	// saving the leftover tail
+	var leftoverWord uint64
+	var err1 error
 	if leftover > 0 {
-		leftoverWord, err := br.ReadBits(uint8(l))
-		if err != nil {
-			fmt.Println("Error:", err)
+		leftoverWord, err1 = br.ReadBits(uint8(l))
+		if err1 != nil {
+			fmt.Println("Error:", err1)
 			return
 		}
 	}
 
 
 
+	// array of sorted pairs (word, its frequecy)
 	var freqSorted []pair
-	var freqSummed []tuple
+	// array of sorted summed tuples (word, sum of earlier freq, its length)
+	var freqSummed map[uint64]tuple = make(map[uint64]tuple)
 
 	// saving, sorting and summing frequencies
 	for w, f := range frequencies {
@@ -119,7 +124,7 @@ func compress(r io.Reader, w io.Writer, l int, fileSize uint64) {
 	freqSum := 0.0
 	for _, p := range freqSorted {
 		length := int(math.Ceil(-math.Log2(p.freq)))
-		freqSummed = append(freqSummed, tuple{word: p.word, freq: freqSum, len: length})
+		freqSummed[p.word] = tuple{word: p.word, freq: freqSum, len: length}
 		freqSum += p.freq
 	}
 
@@ -131,6 +136,7 @@ func compress(r io.Reader, w io.Writer, l int, fileSize uint64) {
 	for _, t := range freqSummed {
 		code := ""
 		fraction := t.freq
+		// taking the first len bits of binary sumfrequency representation
 		for i := 0; i < t.len; i++ {
 			fraction *= 2
 			if fraction < 0 {
@@ -143,6 +149,7 @@ func compress(r io.Reader, w io.Writer, l int, fileSize uint64) {
 
 		if c, err := strconv.ParseInt(code, 2, 64); err != nil {
 			fmt.Println(err)
+			break
 		} else {
 			dictionary[t.word] = c 
 		}
@@ -151,9 +158,45 @@ func compress(r io.Reader, w io.Writer, l int, fileSize uint64) {
 
 
 	// writing to file
-	// 
-}
+	// i could make these call a function but i dont wanna
 
+	// word length-1 		5
+	wordLenBitlen := uint8(math.Ceil(math.Log2(float64(l))))
+	bw.WriteBits(0, uint8(5-wordLenBitlen))
+	bw.WriteBits(uint64(l-1), wordLenBitlen)
+
+	// word count-1 		6
+	wordCountBitlen := uint8(math.Ceil(math.Log2(float64(wordCount))))
+	bw.WriteBits(0, uint8(6-wordCountBitlen))
+	bw.WriteBits(uint64(wordCount-1), wordCountBitlen)
+
+	// leftover length	 	5
+	leftoverBitlen := uint8(math.Ceil(math.Log2(float64(leftover+1))))
+	bw.WriteBits(0, uint8(5-leftoverBitlen))
+	bw.WriteBits(leftover, leftoverBitlen)
+
+	ind := 0
+	for w, c := range dictionary {
+		// word			wordlen
+		bw.WriteBits(w, uint8(l))
+		// codelen-1	5
+		codeLen := uint8(freqSummed[w].len)
+		codeLenBitlen := uint8(math.Ceil(math.Log2(float64(codeLen))))
+		bw.WriteBits(0, uint8(5-codeLenBitlen))
+		bw.WriteBits(uint64(codeLen-1), codeLenBitlen)
+		// code			codelen
+		bw.WriteBits(uint64(c), codeLen)
+		ind++
+	}
+	
+	// leftover 
+	bw.WriteBits(leftoverWord, uint8(leftover))
+
+	// encoded bits
+	rf.Seek(0,0)
+
+
+}
 
 
 func (f byFreq) Len() int {
