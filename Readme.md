@@ -15,7 +15,7 @@ go build ./src/unlzw
 ### TODO
 #### LZW
  - [x] make reset work
- - [ ] use dynamic record sizing
+ - [x] use dynamic record sizing
  - [ ] add tests
  - [x] document code
  - [ ] analyze the compress ratio
