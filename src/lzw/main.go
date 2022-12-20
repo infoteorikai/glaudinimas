@@ -14,7 +14,7 @@ import (
 
 var in = flag.String("in", "/path/to/input", "input file")
 var out = flag.String("out", "/path/to/output", "output file")
-var k = flag.Int("k", 12, "dictionary size N=2^k")
+var k = flag.Int("k", 12, "dictionary size n=2^k")
 var reset = flag.Bool("r", false, "reset dictionary when full")
 
 func main() {

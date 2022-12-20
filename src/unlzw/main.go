@@ -76,7 +76,7 @@ func uncompress(br *bitio.Reader, w io.Writer, k int, reset bool) {
 	var pfirst byte
 
 	for {
-		// The dictionary of compressor is ussualy larger by one, unless
+		// The dictionary of compressor is usually larger by one, unless
 		// its fresh or fully filled
 		add := 1
 		if prev < 0 || len(dict) == 1<<k {
